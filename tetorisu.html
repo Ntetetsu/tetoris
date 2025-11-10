@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🕹️ テトリス 2人対戦 (九九バトル)</title>
+    <style>
+        /* (CSSは変更ありません) */
+        body {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            font-family: Arial, sans-serif;
+            color: #fff;
+            background: url('tetris2p_bg.png') no-repeat center / cover;
+        }
+        #overlay {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 0;
+        }
+        h1, #timer, #message {
+            position: relative;
+            z-index: 1;
+            background: rgba(0,0,0,0.7);
+            padding: 10px 20px;
+            border-radius: 5px;
+            text-align: center;
+        }
+        #timer, #message {
+            font-size: 20px;
+            font-weight: bold;
+        }
+        #container {
+            display: flex;
+            gap: 50px;
+            position: relative;
+            z-index: 1;
+        }
+        .game-container {
+            position: relative; 
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+        .game-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: nowrap;
+        }
+        .player1-row {
+            flex-direction: row;
+        }
+        .player2-row {
+            flex-direction: row-reverse;
+        }
+        .game {
+            display: grid;
+            grid-template-rows: repeat(20, 30px);
+            grid-template-columns: repeat(10, 30px);
+            gap: 1px;
+            background-color: #111;
+            border: 2px solid #fff;
+        }
+        .cell { width: 30px; height: 30px; background: #222; }
+        .fixed { background-color: #555!important; }
+        .block { /* ブロックはインラインスタイルで色設定 */ }
+        .info { display: flex; flex-direction: column; align-items: center; }
+        .score { font-size: 18px; margin-bottom: 10px; }
+        .next-block { display: grid; grid-template-rows: repeat(4,30px); grid-template-columns: repeat(4,30px); gap:1px; }
+        .next-cell { width:30px; height:30px; background:#222; }
+        #restart-btn {
+            position: relative;
+            z-index: 1;
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-size: 16px;
+            background-color: #007bff;
+            border: none;
+            border-radius: 5px;
+            color: white;
+            cursor: pointer;
+        }
+        #restart-btn:hover { background-color: #0056b3; }
+        .quiz-overlay {
+            position: absolute;
+            top: 50px; 
+            left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.9);
+            z-index: 10;
+            display: none; /* 普段は隠す */
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            border-radius: 5px;
+        }
+        .quiz-box {
+            background: #333;
+            padding: 20px;
+            border-radius: 10px;
+            border: 2px solid #fff;
+        }
+        .quiz-question {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 15px;
+        }
+        .quiz-options {
+            display: grid;
+            grid-template-areas: 
+                ". up ."
+                "left . right"
+                ". down .";
+            grid-template-rows: 1fr 1fr 1fr;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 10px;
+            width: 250px;
+            height: 150px;
+        }
+        .option {
+            padding: 10px;
+            background: #555;
+            border-radius: 5px;
+            font-size: 18px;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        [id$="-opt0"] { grid-area: up; }
+        [id$="-opt1"] { grid-area: left; }
+        [id$="-opt2"] { grid-area: down; }
+        [id$="-opt3"] { grid-area: right; }
+    </style></head><body>
+    <div id="overlay"></div>
+    <h1>🕹️ テトリス 2人対戦</h1>
+    <div id="timer">残り時間: 60秒</div>
+    <div id="container">
+        <div class="game-container">
+            <h2>👤 Player 1</h2>
+            <div class="quiz-overlay" id="quiz-overlay1">
+                <div class="quiz-box">
+                    <div id="quiz-question1" class="quiz-question"></div>
+                    <div id="quiz-options1" class="quiz-options">
+                        <div class="option" id="q1-opt0"></div>
+                        <div class="option" id="q1-opt1"></div>
+                        <div class="option" id="q1-opt2"></div>
+                        <div class="option" id="q1-opt3"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="game-row player1-row">
+                <div class="info">
+                    <div class="score" id="score1">スコア: 0</div>
+                    <div class="next-block" id="next1"></div>
+                </div>
+                <div class="game" id="game1"></div>
+            </div>
+        </div>
+        <div class="game-container">
+            <h2>👤 Player 2</h2>
+            <div class="quiz-overlay" id="quiz-overlay2">
+                <div class="quiz-box">
+                    <div id="quiz-question2" class="quiz-question"></div>
+                    <div id="quiz-options2" class="quiz-options">
+                        <div class="option" id="q2-opt0"></div>
+                        <div class="option" id="q2-opt1"></div>
+                        <div class="option" id="q2-opt2"></div>
+                        <div class="option" id="q2-opt3"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="game-row player2-row">
+                <div class="game" id="game2"></div>
+                <div class="info">
+                    <div class="score" id="score2">スコア: 0</div>
+                    <div class="next-block" id="next2"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div id="message"></div>
+    <button id="restart-btn">🔄 もう一回プレイする</button>
+
+    <script>
+        // グローバルタイマー
+        let time = 60;
+        let timer = null;
+
+        class Tetris {
+            constructor(gameEl, scoreEl, nextEl, opponent, controls, name, quizOverlayEl, quizQuestionEl, quizOptionsEl) {
+                this.gameEl   = gameEl;
+                this.scoreEl  = scoreEl;
+                this.nextEl   = nextEl;
+                this.opponent = opponent;
+                this.controls = controls;
+                this.name     = name;
+                this.rows     = 20;
+                this.cols     = 10;
+                this.grid     = [];
+                this.tetrominoes = [
+                    [[1,1,1],[0,1,0]], [[1,1],[1,1]],
+                    [[1,1,0],[0,1,1]], [[0,1,1],[1,1,0]],
+                    [[1,1,1,1]],     [[1,1,1],[1,0,0]],
+                    [[1,1,1],[0,0,1]]
+                ];
+                this.colors = ['#e74c3c','#3498db','#f1c40f','#2ecc71','#9b59b6','#e67e22','#1abc9c'];
+
+                this.quizOverlayEl = quizOverlayEl;
+                this.quizQuestionEl = quizQuestionEl;
+                this.quizOptionsEl = quizOptionsEl;
+                this.options = this.quizOptionsEl.querySelectorAll('.option');
+                this.inQuiz = false;
+                this.quizAnswer = 0;
+                // this.quizChance = 0.2; (ランダム発生ではないので不要)
+                
+                // ▼▼▼ 追加 (クイズ予約フラグ) ▼▼▼
+                this.quizPending = false;
+                // ▲▲▲ 追加 ▲▲▲
+
+                this.initGrid();
+                this.startGame();
+                this.addKeyListeners();
+            }
+
+            // (initGrid, initNext, displayNext, genBlock メソッドは変更ありません)
+            initGrid() {
+                this.grid = [];
+                this.gameEl.innerHTML = '';
+                for (let r = 0; r < this.rows; r++) {
+                    this.grid[r] = [];
+                    for (let c = 0; c < this.cols; c++) {
+                        const cell = document.createElement('div');
+                        cell.classList.add('cell');
+                        this.gameEl.appendChild(cell);
+                        this.grid[r][c] = cell;
+                    }
+                }
+            }
+            initNext() {
+                this.nextEl.innerHTML = '';
+                for (let i = 0; i < 16; i++) {
+                    const cell = document.createElement('div');
+                    cell.classList.add('next-cell');
+                    this.nextEl.appendChild(cell);
+                }
+            }
+            displayNext() {
+                const cells = this.nextEl.querySelectorAll('.next-cell');
+                cells.forEach(c => c.style.background = '#222');
+                const { shape, color } = this.next;
+                shape.forEach((r, i) => {
+                    r.forEach((v, j) => {
+                        if (v) cells[i * 4 + j].style.background = color;
+                    });
+                });
+            }
+            genBlock() {
+                const idx = Math.floor(Math.random() * this.tetrominoes.length);
+                return { shape: this.tetrominoes[idx], color: this.colors[idx] };
+            }
+
+
+            startGame() {
+                this.initGrid();
+                this.initNext();
+                const first = this.genBlock();
+                this.current = { ...first, row: 0, col: Math.floor(this.cols/2) - 1 };
+                this.next    = this.genBlock();
+                this.displayNext();
+                this.score   = 0;
+                this.scoreEl.textContent = `スコア: ${this.score}`;
+                this.isGameOver = false;
+                this.inQuiz = false;
+                this.quizOverlayEl.style.display = 'none';
+                
+                // ▼▼▼ 追加 (クイズ予約フラグのリセット) ▼▼▼
+                this.quizPending = false;
+                // ▲▲▲ 追加 ▲▲▲
+
+                clearInterval(this.interval);
+                this.interval = setInterval(() => { if (!this.isGameOver) this.move(0,1); }, 500);
+            }
+
+            // (draw, clear, valid, move, rotate, fix メソッドは変更ありません)
+            draw() {
+                this.clear();
+                const { shape, row, col, color } = this.current;
+                shape.forEach((r, i) => {
+                    r.forEach((v, j) => {
+                        if (v && this.grid[row+i]?.[col+j]) {
+                            const cell = this.grid[row+i][col+j];
+                            cell.classList.add('block');
+                            cell.style.background = color;
+                        }
+                    });
+                });
+            }
+            clear() {
+                this.grid.flat().forEach(c => {
+                    c.classList.remove('block');
+                    if (c.classList.contains('fixed')) {
+                        c.style.background = ''; 
+                    } else {
+                        c.style.background = '#222';
+                    }
+                });
+            }
+            valid(shape, row, col) {
+                return shape.every((r,i) => r.every((v,j) => {
+                    if (!v) return true;
+                    const nr = row + i;
+                    const nc = col + j;
+                    return nr>=0 && nr<this.rows && nc>=0 && nc<this.cols && !this.grid[nr][nc].classList.contains('fixed');
+                }));
+            }
+            move(dx, dy) {
+                this.current.row += dy;
+                this.current.col += dx;
+                if (!this.valid(this.current.shape, this.current.row, this.current.col)) {
+                    this.current.row -= dy;
+                    this.current.col -= dx;
+                    if (dy === 1) {
+                        this.fix();
+                        this.clearLines();
+                        if (this.checkTop()) { return; } 
+                        this.spawnNext();
+                    }
+                }
+                this.draw();
+            }
+            rotate() {
+                const { shape, row, col } = this.current;
+                const ns = shape[0].map((_,i) => shape.map(r => r[i]).reverse());
+                if (this.valid(ns,row,col)) { this.current.shape=ns; this.draw(); }
+            }
+            fix() {
+                const { shape,row,col } = this.current;
+                shape.forEach((r,i) => r.forEach((v,j) => {
+                    if (v && this.grid[row+i]?.[col+j]) {
+                        const cell = this.grid[row+i][col+j];
+                        cell.classList.add('fixed');
+                        cell.style.background = ''; // CSS(.fixed)のスタイルを適用
+                    }
+                }));
+            }
+
+
+            clearLines() {
+                let cnt = 0;
+                for (let i = 0; i < this.rows; i++) {
+                    if (this.grid[i].every(c => c.classList.contains('fixed'))) {
+                        this.grid[i].forEach(c => c.classList.remove('fixed'));
+                        for (let r = i; r > 0; r--) {
+                            for (let c = 0; c < this.cols; c++) {
+                                if (this.grid[r-1][c].classList.contains('fixed')) {
+                                    this.grid[r][c].classList.add('fixed');
+                                } else {
+                                    this.grid[r][c].classList.remove('fixed');
+                                }
+                            }
+                        }
+                        cnt++;
+                    }
+                }
+                if (cnt > 0) {
+                    this.score += cnt;
+                    this.scoreEl.textContent = `スコア: ${this.score}`;
+                    
+                    // ▼▼▼ 変更 (クイズトリガーを予約フラグに変更) ▼▼▼
+                    // 相手がクイズ中でなければ、クイズを予約する
+                    if (!this.opponent.inQuiz) {
+                        this.quizPending = true;
+                    }
+                    // ▲▲▲ 変更 ▲▲▲
+                }
+            }
+
+            // (checkTop, handleStackLose メソッドは変更ありません)
+            checkTop() {
+                if (this.grid[0].some(c => c.classList.contains('fixed'))) {
+                    this.handleStackLose('stack'); // 理由: 'stack' (積み上げ)
+                    return true;
+                }
+                return false;
+            }
+            handleStackLose(reason = 'stack') {
+                this.isGameOver = true;
+                clearInterval(this.interval);
+                if (this.opponent) {
+                    this.opponent.isGameOver = true;
+                    clearInterval(this.opponent.interval);
+                }
+                clearInterval(timer);
+                time = 0;
+                document.getElementById('timer').textContent = '残り時間: 0秒';
+                
+                const winner = this.opponent.name;
+                let msg = '';
+                if (reason === 'stack') {
+                    msg = `💥 ${this.name} がブロックを積み上げました！🥇 勝者: ${winner}`;
+                } else if (reason === 'garbage') {
+                    msg = `💥 ${this.name} がお邪魔ブロックで埋まりました！🥇 勝者: ${winner}`;
+                }
+                document.getElementById('message').textContent = msg;
+            }
+
+
+            spawnNext() {
+                this.current = { ...this.next, row: 0, col: Math.floor(this.cols/2) - 1 };
+                this.next = this.genBlock();
+                this.displayNext();
+
+                // ▼▼▼ 変更 (クイズトリガー) ▼▼▼
+                // (ランダム発生のロジックを削除)
+                
+                // 行消去によってクイズが予約されていれば、ここで開始
+                if (this.quizPending && !this.opponent.inQuiz) {
+                    this.quizPending = false; // 予約フラグをリセット
+                    this.startQuiz(); // クイズを開始
+                }
+                // ▲▲▲ 変更 ▲▲▲
+            }
+
+            // (startQuiz, handleQuizInput, endQuiz, addGarbageLine, addKeyListeners メソッドは変更ありません)
+            startQuiz() {
+                this.inQuiz = true;
+                clearInterval(this.interval); // ゲームの落下を一時停止
+
+                // 1. 九九の問題を生成
+                const n1 = Math.floor(Math.random() * 9) + 1;
+                const n2 = Math.floor(Math.random() * 9) + 1;
+                const correct = n1 * n2;
+                this.quizQuestionEl.textContent = `${n1} x ${n2} = ?`;
+
+                // 2. 選択肢を生成
+                this.quizAnswer = Math.floor(Math.random() * 4); // 正解の場所 (0=上, 1=左, 2=下, 3=右)
+                const opts = [];
+                for (let i = 0; i < 4; i++) {
+                    if (i === this.quizAnswer) {
+                        opts.push(correct);
+                    } else {
+                        // ダミーの答えを生成 (正解と被らないように)
+                        let dummy;
+                        do {
+                            const offset = (Math.floor(Math.random() * 5) + 1) * (Math.random() < 0.5 ? -1 : 1); // ±1～5
+                            dummy = correct + offset;
+                        } while (dummy === correct || opts.includes(dummy) || dummy <= 0 || dummy > 81);
+                        opts.push(dummy);
+                    }
+                }
+
+                // 3. 選択肢をHTMLに表示
+                this.options.forEach((optEl, i) => {
+                    optEl.textContent = opts[i];
+                });
+
+                // 4. クイズモーダルを表示
+                this.quizOverlayEl.style.display = 'flex';
+            }
+            handleQuizInput(key) {
+                if (!this.inQuiz) return;
+
+                let selectedIndex = -1;
+                if (this.controls.player1) {
+                    if (key === 'w') selectedIndex = 0; // 上
+                    if (key === 'a') selectedIndex = 1; // 左
+                    if (key === 's') selectedIndex = 2; // 下
+                    if (key === 'd') selectedIndex = 3; // 右
+                }
+                if (this.controls.player2) {
+                    if (key === 'ArrowUp') selectedIndex = 0; // 上
+                    if (key === 'ArrowLeft') selectedIndex = 1; // 左
+                    if (key === 'ArrowDown') selectedIndex = 2; // 下
+                    if (key === 'ArrowRight') selectedIndex = 3; // 右
+                }
+
+                if (selectedIndex === -1) return; // 関係ないキー
+
+                // 答え合わせ
+                if (selectedIndex === this.quizAnswer) {
+                    // 正解
+                    this.opponent.addGarbageLine();
+                } else {
+                    // 不正解 (今回はペナルティなし)
+                }
+
+                // クイズを終了
+                this.endQuiz();
+            }
+            endQuiz() {
+                this.inQuiz = false;
+                this.quizOverlayEl.style.display = 'none';
+                // ゲーム再開
+                if (!this.isGameOver) {
+                    clearInterval(this.interval);
+                    this.interval = setInterval(() => { if (!this.isGameOver) this.move(0,1); }, 500);
+                }
+            }
+            addGarbageLine() {
+                // 1. せり上がることでゲームオーバーになるかチェック
+                if (this.grid[0].some(c => c.classList.contains('fixed'))) {
+                    this.handleStackLose('garbage'); // 理由: 'garbage' (お邪魔)
+                    return;
+                }
+                
+                // 2. 既存のブロックを1行上にシフト
+                for (let r = 0; r < this.rows - 1; r++) {
+                    for (let c = 0; c < this.cols; c++) {
+                        if (this.grid[r + 1][c].classList.contains('fixed')) {
+                            this.grid[r][c].classList.add('fixed');
+                        } else {
+                            this.grid[r][c].classList.remove('fixed');
+                        }
+                    }
+                }
+                
+                // 3. 一番下の行にお邪魔ブロック（1つ穴）を生成
+                const hole = Math.floor(Math.random() * this.cols);
+                for (let c = 0; c < this.cols; c++) {
+                    if (c === hole) {
+                        this.grid[this.rows - 1][c].classList.remove('fixed');
+                    } else {
+                        this.grid[this.rows - 1][c].classList.add('fixed');
+                    }
+                }
+
+                // 4. 操作中のブロックがお邪魔ブロックと衝突したら押し上げる
+                while (!this.valid(this.current.shape, this.current.row, this.current.col)) {
+                    this.current.row--; 
+                    if (this.current.row < 0) { // 画面外に押し出された
+                        this.handleStackLose('garbage'); 
+                        return;
+                    }
+                }
+
+                // 5. 画面を再描画
+                this.clear();
+                this.draw();
+            }
+            addKeyListeners() {
+                document.addEventListener('keydown', e => {
+                    if (this.isGameOver) return;
+
+                    if (this.inQuiz) {
+                        this.handleQuizInput(e.key);
+                        return; // テトリス操作はしない
+                    }
+
+                    if (this.controls.player1) {
+                        if (e.key === 'a') this.move(-1,0);
+                        if (e.key === 'd') this.move(1,0);
+                        if (e.key === 's') this.move(0,1);
+                        if (e.key === 'w') this.rotate();
+                    }
+                    if (this.controls.player2) {
+                        if (e.key === 'ArrowLeft') this.move(-1,0);
+                        if (e.key === 'ArrowRight') this.move(1,0);
+                        if (e.key === 'ArrowDown') this.move(0,1);
+                        if (e.key === 'ArrowUp') this.rotate();
+                    }
+                });
+            }
+        }
+
+        // プレイヤーインスタンス生成 (変更ありません)
+        const p1 = new Tetris(
+            document.getElementById('game1'),
+            document.getElementById('score1'),
+            document.getElementById('next1'),
+            null,
+            { player1: true, player2: false },
+            'Player 1',
+            document.getElementById('quiz-overlay1'),
+            document.getElementById('quiz-question1'),
+            document.getElementById('quiz-options1')
+        );
+        const p2 = new Tetris(
+            document.getElementById('game2'),
+            document.getElementById('score2'),
+            document.getElementById('next2'),
+            p1,
+            { player1: false, player2: true },
+            'Player 2',
+            document.getElementById('quiz-overlay2'),
+            document.getElementById('quiz-question2'),
+            document.getElementById('quiz-options2')
+        );
+        p1.opponent = p2;
+
+        // タイマー制御 (変更ありません)
+        function startTimer() {
+            clearInterval(timer);
+            time = 60;
+            document.getElementById('timer').textContent = `残り時間: ${time}秒`;
+            timer = setInterval(() => {
+                time--;
+                document.getElementById('timer').textContent = `残り時間: ${time}秒`;
+                if (time <= 0) {
+                    clearInterval(timer);
+                    if (!p1.isGameOver) { 
+                        p1.isGameOver = true; clearInterval(p1.interval);
+                        p2.isGameOver = true; clearInterval(p2.interval);
+                    
+                        document.getElementById('timer').textContent = '残り時間: 0秒';
+                        const s1 = p1.score, s2 = p2.score;
+                        const msgEl = document.getElementById('message');
+                        if (s1 > s2) msgEl.textContent = `⏰ 時間切れ！🥇 勝者: Player 1`;
+                        else if (s2 > s1) msgEl.textContent = `⏰ 時間切れ！🥇 勝者: Player 2`;
+                        else msgEl.textContent = `⏰ 時間切れ！🏅 引き分け`;
+                    }
+                }
+            }, 1000);
+        }
+        startTimer();
+
+        // リスタートボタン (変更ありません)
+        document.getElementById('restart-btn').addEventListener('click', () => {
+            document.getElementById('message').textContent = '';
+            p1.startGame(); p2.startGame(); startTimer();
+        });
+    </script>
+</body>
+</html>
