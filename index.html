@@ -137,7 +137,9 @@
         [id$="-opt1"] { grid-area: left; }
         [id$="-opt2"] { grid-area: down; }
         [id$="-opt3"] { grid-area: right; }
-    </style></head><body>
+    </style>
+</head>
+<body>
     <div id="overlay"></div>
     <h1>🕹️ テトリス 2人対戦</h1>
     <div id="timer">残り時間: 60秒</div>
@@ -207,7 +209,7 @@
                 this.tetrominoes = [
                     [[1,1,1],[0,1,0]], [[1,1],[1,1]],
                     [[1,1,0],[0,1,1]], [[0,1,1],[1,1,0]],
-                    [[1,1,1,1]],     [[1,1,1],[1,0,0]],
+                    [[1,1,1,1]],       [[1,1,1],[1,0,0]],
                     [[1,1,1],[0,0,1]]
                 ];
                 this.colors = ['#e74c3c','#3498db','#f1c40f','#2ecc71','#9b59b6','#e67e22','#1abc9c'];
@@ -218,18 +220,14 @@
                 this.options = this.quizOptionsEl.querySelectorAll('.option');
                 this.inQuiz = false;
                 this.quizAnswer = 0;
-                // this.quizChance = 0.2; (ランダム発生ではないので不要)
                 
-                // ▼▼▼ 追加 (クイズ予約フラグ) ▼▼▼
                 this.quizPending = false;
-                // ▲▲▲ 追加 ▲▲▲
 
                 this.initGrid();
                 this.startGame();
                 this.addKeyListeners();
             }
 
-            // (initGrid, initNext, displayNext, genBlock メソッドは変更ありません)
             initGrid() {
                 this.grid = [];
                 this.gameEl.innerHTML = '';
@@ -266,7 +264,6 @@
                 return { shape: this.tetrominoes[idx], color: this.colors[idx] };
             }
 
-
             startGame() {
                 this.initGrid();
                 this.initNext();
@@ -280,15 +277,12 @@
                 this.inQuiz = false;
                 this.quizOverlayEl.style.display = 'none';
                 
-                // ▼▼▼ 追加 (クイズ予約フラグのリセット) ▼▼▼
                 this.quizPending = false;
-                // ▲▲▲ 追加 ▲▲▲
 
                 clearInterval(this.interval);
                 this.interval = setInterval(() => { if (!this.isGameOver) this.move(0,1); }, 500);
             }
 
-            // (draw, clear, valid, move, rotate, fix メソッドは変更ありません)
             draw() {
                 this.clear();
                 const { shape, row, col, color } = this.current;
@@ -351,7 +345,6 @@
                 }));
             }
 
-
             clearLines() {
                 let cnt = 0;
                 for (let i = 0; i < this.rows; i++) {
@@ -373,16 +366,13 @@
                     this.score += cnt;
                     this.scoreEl.textContent = `スコア: ${this.score}`;
                     
-                    // ▼▼▼ 変更 (クイズトリガーを予約フラグに変更) ▼▼▼
                     // 相手がクイズ中でなければ、クイズを予約する
                     if (!this.opponent.inQuiz) {
                         this.quizPending = true;
                     }
-                    // ▲▲▲ 変更 ▲▲▲
                 }
             }
 
-            // (checkTop, handleStackLose メソッドは変更ありません)
             checkTop() {
                 if (this.grid[0].some(c => c.classList.contains('fixed'))) {
                     this.handleStackLose('stack'); // 理由: 'stack' (積み上げ)
@@ -411,24 +401,18 @@
                 document.getElementById('message').textContent = msg;
             }
 
-
             spawnNext() {
                 this.current = { ...this.next, row: 0, col: Math.floor(this.cols/2) - 1 };
                 this.next = this.genBlock();
                 this.displayNext();
 
-                // ▼▼▼ 変更 (クイズトリガー) ▼▼▼
-                // (ランダム発生のロジックを削除)
-                
                 // 行消去によってクイズが予約されていれば、ここで開始
                 if (this.quizPending && !this.opponent.inQuiz) {
                     this.quizPending = false; // 予約フラグをリセット
                     this.startQuiz(); // クイズを開始
                 }
-                // ▲▲▲ 変更 ▲▲▲
             }
 
-            // (startQuiz, handleQuizInput, endQuiz, addGarbageLine, addKeyListeners メソッドは変更ありません)
             startQuiz() {
                 this.inQuiz = true;
                 clearInterval(this.interval); // ゲームの落下を一時停止
@@ -544,12 +528,27 @@
                 this.clear();
                 this.draw();
             }
+
+            // ▼▼▼ 修正済みのメソッド ▼▼▼
             addKeyListeners() {
                 document.addEventListener('keydown', e => {
                     if (this.isGameOver) return;
 
+                    // このインスタンスが操作するキー(P1 or P2)が押されたか
+                    let isGameKey = false;
+                    if (this.controls.player1 && ['a','s','d','w'].includes(e.key)) {
+                        isGameKey = true;
+                    }
+                    if (this.controls.player2 && ['ArrowLeft', 'ArrowRight', 'ArrowDown', 'ArrowUp'].includes(e.key)) {
+                        isGameKey = true;
+                    }
+
                     if (this.inQuiz) {
                         this.handleQuizInput(e.key);
+                        
+                        // クイズ操作でもスクロールを防ぐ
+                        if (isGameKey) e.preventDefault();
+                        
                         return; // テトリス操作はしない
                     }
 
@@ -565,11 +564,17 @@
                         if (e.key === 'ArrowDown') this.move(0,1);
                         if (e.key === 'ArrowUp') this.rotate();
                     }
+                    
+                    // テトリス操作でスクロールを防ぐ
+                    if (isGameKey) {
+                        e.preventDefault();
+                    }
                 });
             }
+            // ▲▲▲ 修正済みのメソッド ▲▲▲
         }
 
-        // プレイヤーインスタンス生成 (変更ありません)
+        // プレイヤーインスタンス生成
         const p1 = new Tetris(
             document.getElementById('game1'),
             document.getElementById('score1'),
@@ -594,7 +599,7 @@
         );
         p1.opponent = p2;
 
-        // タイマー制御 (変更ありません)
+        // タイマー制御
         function startTimer() {
             clearInterval(timer);
             time = 60;
@@ -620,7 +625,7 @@
         }
         startTimer();
 
-        // リスタートボタン (変更ありません)
+        // リスタートボタン
         document.getElementById('restart-btn').addEventListener('click', () => {
             document.getElementById('message').textContent = '';
             p1.startGame(); p2.startGame(); startTimer();
