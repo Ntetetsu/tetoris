@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>🕹️ テトリス 2人対戦 (九九バトル)</title>
     <style>
-        /* (CSSは変更ありません) */
+        /* (既存のCSS) */
         body {
             display: flex;
             flex-direction: column;
@@ -48,6 +48,19 @@
             align-items: center;
             gap: 10px;
         }
+
+        /* ▼▼▼ ここにCSSを追加 ▼▼▼ */
+        .controls-info {
+            position: relative;
+            z-index: 1;
+            background: rgba(0,0,0,0.7);
+            padding: 5px 10px;
+            border-radius: 5px;
+            text-align: center;
+            font-size: 14px;
+        }
+        /* ▲▲▲ CSSの追加はここまで ▲▲▲ */
+
         .game-row {
             display: flex;
             align-items: center;
@@ -146,6 +159,10 @@
     <div id="container">
         <div class="game-container">
             <h2>👤 Player 1</h2>
+
+            <div class="controls-info">
+                操作: [W]回転 [A]左 [S]下 [D]右
+            </div>
             <div class="quiz-overlay" id="quiz-overlay1">
                 <div class="quiz-box">
                     <div id="quiz-question1" class="quiz-question"></div>
@@ -167,6 +184,10 @@
         </div>
         <div class="game-container">
             <h2>👤 Player 2</h2>
+
+            <div class="controls-info">
+                操作: [↑]回転 [←]左 [↓]下 [→]右
+            </div>
             <div class="quiz-overlay" id="quiz-overlay2">
                 <div class="quiz-box">
                     <div id="quiz-question2" class="quiz-question"></div>
@@ -191,6 +212,7 @@
     <button id="restart-btn">🔄 もう一回プレイする</button>
 
     <script>
+        // (JavaScriptは変更ありません)
         // グローバルタイマー
         let time = 60;
         let timer = null;
@@ -529,7 +551,6 @@
                 this.draw();
             }
 
-            // ▼▼▼ 修正済みのメソッド ▼▼▼
             addKeyListeners() {
                 document.addEventListener('keydown', e => {
                     if (this.isGameOver) return;
@@ -571,7 +592,6 @@
                     }
                 });
             }
-            // ▲▲▲ 修正済みのメソッド ▲▲▲
         }
 
         // プレイヤーインスタンス生成
@@ -611,7 +631,7 @@
                     clearInterval(timer);
                     if (!p1.isGameOver) { 
                         p1.isGameOver = true; clearInterval(p1.interval);
-                        p2.isGameOver = true; clearInterval(p2.interval);
+                        p2.isGameOver = true; clearInterval(2.interval);
                     
                         document.getElementById('timer').textContent = '残り時間: 0秒';
                         const s1 = p1.score, s2 = p2.score;
